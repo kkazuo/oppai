@@ -1,3 +1,5 @@
+(in-package :oppai)
+
 ;; This is the source code for the book
 ;; _Let_Over_Lambda_ by Doug Hoyte.
 ;; This code is (C) 2002-2008, Doug Hoyte.
@@ -13,45 +15,46 @@
 ;; code useful, or would like documentation,
 ;; please consider bying the book!
 
+(eval-when
+    (:compile-toplevel :load-toplevel :execute)
+  ;;
+  ;; Graham's On Lisp book.
+  ;;
+  (defun mkstr (&rest args)
+    (with-output-to-string (s)
+      (dolist (a args) (princ a s))))
 
-;;
-;; Graham's On Lisp book.
-;;
-(defun mkstr (&rest args)
-  (with-output-to-string (s)
-    (dolist (a args) (princ a s))))
+  (defun symb (&rest args)
+    (values (intern (apply #'mkstr args))))
 
-(defun symb (&rest args)
-  (values (intern (apply #'mkstr args))))
-
-(defun flatten (x)
-  (labels ((rec (x acc)
-             (cond ((null x) acc)
-                   ((atom x) (cons x acc))
-                   (t (rec (car x) (rec (cdr x) acc))))))
-    (rec x nil)))
-;; end.
+  (defun flatten (x)
+    (labels ((rec (x acc)
+               (cond ((null x) acc)
+                     ((atom x) (cons x acc))
+                     (t (rec (car x) (rec (cdr x) acc))))))
+      (rec x nil)))
+  ;; end.
 
 
-(defun g!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "G!"
-                :start1 0
-                :end1 2)))
+  (defun g!-symbol-p (s)
+    (and (symbolp s)
+         (> (length (symbol-name s)) 2)
+         (string= (symbol-name s)
+                  "G!"
+                  :start1 0
+                  :end1 2)))
 
-(defun o!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "O!"
-                :start1 0
-                :end1 2)))
+  (defun o!-symbol-p (s)
+    (and (symbolp s)
+         (> (length (symbol-name s)) 2)
+         (string= (symbol-name s)
+                  "O!"
+                  :start1 0
+                  :end1 2)))
 
-(defun o!-symbol-to-g!-symbol (s)
-  (symb "G!"
-        (subseq (symbol-name s) 2)))
+  (defun o!-symbol-to-g!-symbol (s)
+    (symb "G!"
+          (subseq (symbol-name s) 2))) )
 
 (defmacro defmacro/g! (name args &rest body)
   (let ((syms (remove-duplicates
@@ -87,16 +90,17 @@
                            `(cdr ,g!args)))))
           ds))))
 
-(defun |#`-reader| (stream sub-char numarg)
-  (declare (ignore sub-char))
-  (unless numarg (setq numarg 1))
-  `(lambda ,(loop for i from 1 to numarg
-                  collect (symb 'a i))
-     ,(funcall
-       (get-macro-character #\`) stream nil)))
+(eval-when
+    (:compile-toplevel :load-toplevel)
+  (defun |#`-reader| (stream sub-char numarg)
+    (declare (ignore sub-char))
+    (unless numarg (setq numarg 1))
+    `(lambda ,(loop for i from 1 to numarg
+                    collect (symb 'a i))
+       ,(funcall
+         (get-macro-character #\`) stream nil)))
 
-(set-dispatch-macro-character
- #\# #\` #'|#`-reader|)
+  (set-dispatch-macro-character #\# #\` #'|#`-reader|) )
 
 (defun pandoriclet-get (letargs)
   `(case sym
