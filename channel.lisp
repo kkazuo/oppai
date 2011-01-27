@@ -175,3 +175,9 @@
 (declaim (inline pri-alt))
 (defun pri-alt (alt-object &rest args)
   (apply alt-object :pri args))
+
+(defun skip ()
+  (dlambda
+   (:read () nil)
+   (:alting (alt) (declare (ignore alt)) t)
+   (:unalting () t)))
