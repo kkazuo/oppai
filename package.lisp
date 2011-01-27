@@ -17,4 +17,5 @@
 (defpackage :oppai
   (:use :cl
         :sb-thread)
-  (:export #:? #:! #:alt #:pri-alt))
+  (:export #:? #:! #:alt #:pri-alt #:skip
+           #:make-channel #:make-alternate))
