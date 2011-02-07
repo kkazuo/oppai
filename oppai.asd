@@ -22,4 +22,5 @@
   :serial t
   :components ((:file "package")
                (:file "letoverlambda")
-               (:file "channel")))
+               #+sbcl(:file "channel")
+               #+cmu(:file "cmu")))
