@@ -14,17 +14,6 @@
 ;; OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ;;
 
-#|
-(let ((chan (make-channel "name"))
-      (chan2 (make-channel "chan 2")))
-  (? chan)
-  (! chan 2)
-  (alt
-   (? chan)
-   (? chan2))
-  )
-|#
-
 (in-package :oppai)
 
 (defun make-channel (&optional name)
