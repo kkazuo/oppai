@@ -46,6 +46,8 @@ Run only on SBCL now.
 
 ;; select channel.
 (loop (princ (alt a ch3 ch4)))
+;; or can skip.
+(loop (princ (alt a ch3 ch4 (skip))))
 
 
 ;; DO NOT share channel endpoint.
