@@ -35,9 +35,12 @@
               (with-lock-held (mx)
                 (ecase st
                   (:not-ready
-                   (setf st :reading)
-                   (loop do (condition-wait wq mx)
-                         until (eq st :ready))
+                   (unwind-protect
+                       (loop initially (setf st :reading)
+                             do (condition-wait wq mx)
+                             until (eq st :ready))
+                     (unless (eq st :ready)
+                       (setf st :not-ready)))
                    (transfer))
                   (:writing
                    (setf st :ready)
@@ -55,9 +58,12 @@
                (with-lock-held (mx)
                  (ecase st
                    (:not-ready
-                    (setf st :writing)
-                    (loop do (condition-wait wq mx)
-                          until (eq st :ready))
+                    (unwind-protect
+                        (loop initially (setf st :writing)
+                              do (condition-wait wq mx)
+                              until (eq st :ready))
+                      (unless (eq st :ready)
+                        (setf st :not-ready)))
                     (setf st :transfer)
                     (transfer val :transfer))
                    (:alting
@@ -126,8 +132,8 @@
           (with-lock-held (mx)
             (ecase st
               (:not-ready
-               (setf st :waiting)
-               (loop do (condition-wait wq mx)
+               (loop initially (setf st :waiting)
+                     do (condition-wait wq mx)
                      while (eq st :waiting)))
               (:enabling))))
         (let ((ready* (loop for chan in channels
