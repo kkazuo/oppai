@@ -17,8 +17,8 @@
 (in-package :oppai)
 
 (defun make-channel (&optional name)
-  (let ((mx (make-mutex))
-        (wq (make-waitqueue))
+  (let ((mx (make-lock))
+        (wq (make-condition-variable))
         (name name)
         (st :not-ready)
         value alter)
@@ -32,7 +32,7 @@
                          (setf value nil)
                          (condition-notify wq)
                          val)))
-              (with-mutex (mx)
+              (with-lock-held (mx)
                 (ecase st
                   (:not-ready
                    (setf st :reading)
@@ -55,7 +55,7 @@
                                 (return))
                               (condition-wait wq mx))
                         (values)))
-               (with-mutex (mx)
+               (with-lock-held (mx)
                  (ecase st
                    (:not-ready
                     (setf st :writing)
@@ -77,7 +77,7 @@
                     (setf st :ready)
                     (transfer val :ready))))))
      (:alting (alt)
-              (with-mutex (mx)
+              (with-lock-held (mx)
                 (ecase st
                   (:not-ready
                    (setf st :alting)
@@ -88,7 +88,7 @@
                    (funcall alt)
                    t))))
      (:unalting ()
-                (with-mutex (mx)
+                (with-lock-held (mx)
                   (ecase st
                     (:alting
                      (setf st :not-ready)
@@ -100,8 +100,8 @@
                      t)))))))
 
 (defun make-alternate (&optional name)
-  (let ((mx (make-mutex))
-        (wq (make-waitqueue))
+  (let ((mx (make-lock))
+        (wq (make-condition-variable))
         (name name)
         (st :not-ready)
         (ranst (make-random-state)))
@@ -112,10 +112,10 @@
       (when (eq (car channels) :pri)
         (setf channels (cdr channels))
         (setf pri t))
-      (with-mutex (mx)
+      (with-lock-held (mx)
         (setf st :not-ready))
       (let* ((callback (lambda ()
-                         (with-mutex (mx)
+                         (with-lock-held (mx)
                            (ecase st
                              (:not-ready
                               (setf st :enabling))
@@ -128,7 +128,7 @@
                           nconc (if (funcall chan :alting callback)
                                     (list i)))))
         (unless ready
-          (with-mutex (mx)
+          (with-lock-held (mx)
             (ecase st
               (:not-ready
                (setf st :waiting)

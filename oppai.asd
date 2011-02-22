@@ -20,7 +20,8 @@
   :author "Kazuo Koga <kogakazuo@gmail.com>"
   :license "BSD"
   :serial t
+  :depends-on ("bordeaux-threads")
   :components ((:file "package")
                (:file "letoverlambda")
-               #+sbcl(:file "channel")
+               #-cmu(:file "channel")
                #+cmu(:file "cmu")))
