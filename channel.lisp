@@ -36,41 +36,36 @@
                 (ecase st
                   (:not-ready
                    (setf st :reading)
-                   (loop (when (eq st :ready)
-                           (return))
-                         (condition-wait wq mx))
+                   (loop do (condition-wait wq mx)
+                         until (eq st :ready))
                    (transfer))
                   (:writing
                    (setf st :ready)
                    (condition-notify wq)
-                   (loop (when (eq st :transfer)
-                           (return))
-                         (condition-wait wq mx))
+                   (loop do (condition-wait wq mx)
+                         until (eq st :transfer))
                    (transfer))))))
      (:write (val)
              (labels ((transfer (val tag)
                         (setf value val)
                         (condition-notify wq)
-                        (loop (unless (eq st tag)
-                                (return))
-                              (condition-wait wq mx))
+                        (loop do (condition-wait wq mx)
+                              while (eq st tag))
                         (values)))
                (with-lock-held (mx)
                  (ecase st
                    (:not-ready
                     (setf st :writing)
-                    (loop (when (eq st :ready)
-                            (return))
-                          (condition-wait wq mx))
+                    (loop do (condition-wait wq mx)
+                          until (eq st :ready))
                     (setf st :transfer)
                     (transfer val :transfer))
                    (:alting
                     (setf st :alt-enabling)
                     (funcall alter)
                     (setf alter nil)
-                    (loop (when (eq st :ready)
-                            (return))
-                          (condition-wait wq mx))
+                    (loop do (condition-wait wq mx)
+                          until (eq st :ready))
                     (setf st :transfer)
                     (transfer val :transfer))
                    (:reading
@@ -132,9 +127,8 @@
             (ecase st
               (:not-ready
                (setf st :waiting)
-               (loop (unless (eq st :waiting)
-                       (return))
-                     (condition-wait wq mx)))
+               (loop do (condition-wait wq mx)
+                     while (eq st :waiting)))
               (:enabling))))
         (let ((ready* (loop for chan in channels
                             and i = 0 then (1+ i)
