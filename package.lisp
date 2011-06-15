@@ -14,7 +14,6 @@
 
 (defpackage :oppai
   (:use :cl
-        #-cmu :bordeaux-threads
-        #+cmu :mp)
+        :bordeaux-threads)
   (:export #:? #:! #:alt #:pri-alt #:skip
            #:make-channel #:make-alternate))

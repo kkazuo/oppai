@@ -21,5 +21,4 @@
   :depends-on ("bordeaux-threads")
   :components ((:file "package")
                (:file "letoverlambda")
-               #-cmu(:file "channel")
-               #+cmu(:file "cmu")))
+               (:file "channel")))
