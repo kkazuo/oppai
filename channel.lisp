@@ -37,11 +37,12 @@
   (with-slots (lock condvar state value) chan
      (labels ((transfer ()
                 (unwind-protect
-                    (loop initially (setf state 'wait-read)
-                                    (setf value val)
-                          finally (return t)
+                    (loop initially (setf value val)
+                                    (setf state 'wait-read)
+                                    (condition-notify condvar)
                           do (condition-wait condvar lock)
-                          until (eql state 'accept-read))
+                          until (eql state 'accept-read)
+                          finally (return t))
                   (setf state 'empty)
                   (condition-notify condvar))))
        (with-lock-held (lock)
