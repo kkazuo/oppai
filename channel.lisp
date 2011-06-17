@@ -14,157 +14,69 @@
 
 (in-package :oppai)
 
-(defun make-channel (&optional name)
-  (let ((mx (make-lock))
-        (wq (make-condition-variable))
-        (name name)
-        (st :not-ready)
-        value alter)
-    (declare (type keyword st)
-             (ignorable name))
-    (dlambda
-     (:read ()
-            (labels ((transfer ()
-                       (let ((val value))
-                         (setf st :not-ready)
-                         (setf value nil)
-                         (condition-notify wq)
-                         val)))
-              (with-lock-held (mx)
-                (ecase st
-                  (:not-ready
-                   (unwind-protect
-                       (loop initially (setf st :reading)
-                             do (condition-wait wq mx)
-                             until (eq st :ready))
-                     (unless (eq st :ready)
-                       (setf st :not-ready)))
-                   (transfer))
-                  (:writing
-                   (setf st :ready)
-                   (condition-notify wq)
-                   (loop do (condition-wait wq mx)
-                         until (eq st :transfer))
-                   (transfer))))))
-     (:write (val)
-             (labels ((transfer (val tag)
-                        (setf value val)
-                        (condition-notify wq)
-                        (loop do (condition-wait wq mx)
-                              while (eq st tag))
-                        (values)))
-               (with-lock-held (mx)
-                 (ecase st
-                   (:not-ready
-                    (unwind-protect
-                        (loop initially (setf st :writing)
-                              do (condition-wait wq mx)
-                              until (eq st :ready))
-                      (unless (eq st :ready)
-                        (setf st :not-ready)))
-                    (setf st :transfer)
-                    (transfer val :transfer))
-                   (:alting
-                    (setf st :alt-enabling)
-                    (funcall alter)
-                    (setf alter nil)
-                    (loop do (condition-wait wq mx)
-                          until (eq st :ready))
-                    (setf st :transfer)
-                    (transfer val :transfer))
-                   (:reading
-                    (setf st :ready)
-                    (transfer val :ready))))))
-     (:alting (alt)
-              (with-lock-held (mx)
-                (ecase st
-                  (:not-ready
-                   (setf st :alting)
-                   (setf alter alt)
-                   nil)
-                  (:writing
-                   (setf st :alt-enabling)
-                   (funcall alt)
-                   t))))
-     (:unalting ()
-                (with-lock-held (mx)
-                  (ecase st
-                    (:alting
-                     (setf st :not-ready)
-                     (setf alter nil)
-                     nil)
-                    (:alt-enabling
-                     (setf st :writing)
-                     (setf alter nil)
-                     t)))))))
+(defclass sync-channel ()
+     ((name
+       :initarg :name
+       :initform "")
+      (lock
+       :initform (make-lock))
+      (condvar
+       :initform (make-condition-variable))
+      (state
+       :initform 'empty)
+      value))
 
-(defun make-alternate (&optional name)
-  (let ((mx (make-lock))
-        (wq (make-condition-variable))
-        (name name)
-        (st :not-ready)
-        (ranst (make-random-state)))
-    (declare (type keyword st)
-             (ignorable name))
-    (lambda
-        (&rest channels &aux pri)
-      (when (eq (car channels) :pri)
-        (setf channels (cdr channels))
-        (setf pri t))
-      (with-lock-held (mx)
-        (setf st :not-ready))
-      (let* ((callback (lambda ()
-                         (with-lock-held (mx)
-                           (ecase st
-                             (:not-ready
-                              (setf st :enabling))
-                             (:waiting
-                              (setf st :enabling)
-                              (condition-notify wq))
-                             (:enabling)))))
-             (ready (loop for chan in channels
-                          and i = 0 then (1+ i)
-                          nconc (if (funcall chan :alting callback)
-                                    (list i)))))
-        (unless ready
-          (with-lock-held (mx)
-            (ecase st
-              (:not-ready
-               (loop initially (setf st :waiting)
-                     do (condition-wait wq mx)
-                     while (eq st :waiting)))
-              (:enabling))))
-        (let ((ready* (loop for chan in channels
-                            and i = 0 then (1+ i)
-                            nconc (if (funcall chan :unalting)
-                                      (list i)))))
-          (if ready*
-              (let ((channel
-                     (nth
-                      (if pri
-                          (car ready*)
-                          (nth (random (length ready*) ranst) ready*))
-                      channels)))
-                (values (funcall channel :read) channel))))))))
+(defmethod print-object ((object sync-channel) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (with-slots (name state) object
+       (format stream "~s ~a" name state))))
 
-(declaim (inline ?))
-(defun ? (channel)
-  (funcall channel :read))
+(defun write-sync-channel (chan val)
+  (with-slots (lock condvar state value) chan
+     (labels ((transfer ()
+                (unwind-protect
+                    (loop initially (setf state 'wait-read)
+                                    (setf value val)
+                          finally (return t)
+                          do (condition-wait condvar lock)
+                          until (eql state 'accept-read))
+                  (setf state 'empty)
+                  (condition-notify condvar))))
+       (with-lock-held (lock)
+         (ecase state
+           (empty
+            (transfer))
+           ((wait-read accept-read)
+            (loop do (condition-wait condvar lock)
+                  until (eql state 'empty))
+            (transfer)))))))
 
-(declaim (inline !))
-(defun ! (channel value)
-  (funcall channel :write value))
+(defun read-sync-channel (chan)
+  (with-slots (lock condvar state value) chan
+     (labels ((transfer (&aux (val value))
+                (setf value nil)
+                (setf state 'accept-read)
+                (condition-notify condvar)
+                val))
+       (with-lock-held (lock)
+         (ecase state
+           (wait-read
+            (transfer))
+           ((empty accept-read)
+            (loop do (condition-wait condvar lock)
+                  until (eql state 'wait-read))
+            (transfer)))))))
 
-(declaim (inline alt))
-(defun alt (alt-object &rest args)
-  (apply alt-object args))
-
-(declaim (inline pri-alt))
-(defun pri-alt (alt-object &rest args)
-  (apply alt-object :pri args))
-
-(defun skip ()
-  (dlambda
-   (:read () nil)
-   (:alting (alt) (declare (ignore alt)) t)
-   (:unalting () t)))
+(defun try-read-sync-channel (chan)
+  (with-slots (lock condvar state value) chan
+     (labels ((transfer (&aux (val value))
+                (setf value nil)
+                (setf state 'accept-read)
+                (condition-notify condvar)
+                val))
+       (with-lock-held (lock)
+         (ecase state
+           (wait-read
+            (values (transfer) t))
+           ((empty accept-read)
+            (values nil nil)))))))

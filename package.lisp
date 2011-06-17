@@ -15,5 +15,7 @@
 (defpackage :oppai
   (:use :cl
         :bordeaux-threads)
-  (:export #:? #:! #:alt #:pri-alt #:skip
-           #:make-channel #:make-alternate))
+  (:export #:sync-channel
+           #:read-sync-channel
+           #:try-read-sync-channel
+           #:write-sync-channel))

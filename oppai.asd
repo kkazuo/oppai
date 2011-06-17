@@ -14,11 +14,10 @@
 
 (defsystem "oppai"
   :description "oppai: occam style CSP thread synchronization primitives."
-  :version "1.0"
+  :version "2.0"
   :author "Kazuo Koga <kogakazuo@gmail.com>"
   :license "Apache/2.0"
   :serial t
   :depends-on ("bordeaux-threads")
   :components ((:file "package")
-               (:file "letoverlambda")
                (:file "channel")))
