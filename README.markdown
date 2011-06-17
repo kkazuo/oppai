@@ -1,4 +1,8 @@
-# make-sync-channel
-# write-sync-channel
-# read-sync-channel
-# try-read-sync-channel
+# License
+Apache/2.0
+
+# Functions
+## make-sync-channel (&key name)
+## write-sync-channel (chan val)
+## read-sync-channel (chan)
+## try-read-sync-channel (chan)
