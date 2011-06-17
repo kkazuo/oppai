@@ -16,8 +16,7 @@
 
 (defclass sync-channel ()
      ((name
-       :initarg :name
-       :initform "")
+       :initarg :name)
       (lock
        :initform (make-lock))
       (condvar
@@ -30,6 +29,9 @@
   (print-unreadable-object (object stream :type t :identity t)
     (with-slots (name state) object
        (format stream "~s ~a" name state))))
+
+(defun make-sync-channel (&key (name ""))
+  (make-instance 'sync-channel :name name))
 
 (defun write-sync-channel (chan val)
   (with-slots (lock condvar state value) chan
