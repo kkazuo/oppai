@@ -20,4 +20,5 @@
   :serial t
   :depends-on ("bordeaux-threads")
   :components ((:file "package")
-               (:file "channel")))
+               (:file "channel")
+               (:file "thread")))

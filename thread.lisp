@@ -12,11 +12,14 @@
 ;;; See the License for the specific language governing permissions and
 ;;; limitations under the License.
 
-(defpackage :oppai
-  (:use :cl
-        :bordeaux-threads)
-  (:export #:make-sync-channel
-           #:read-sync-channel
-           #:try-read-sync-channel
-           #:write-sync-channel
-           #:do-parallel))
+(in-package :oppai)
+
+(defun do-parallel (&rest functions)
+  (let ((thrs (loop for fun in (cdr functions)
+                    collect (make-thread fun)))
+        (fun (car functions)))
+    (prog1
+      (when fun
+        (funcall fun))
+      (loop for thr in thrs
+            do (join-thread thr)))))
