@@ -56,11 +56,11 @@
 
 (defun read-sync-channel (chan)
   (with-slots (lock condvar state value) chan
-     (labels ((transfer (&aux (val value))
-                (setf value nil)
-                (setf state 'accept-read)
-                (condition-notify condvar)
-                val))
+     (labels ((transfer ()
+                (unwind-protect value
+                  (setf value nil)
+                  (setf state 'accept-read)
+                  (condition-notify condvar))))
        (with-lock-held (lock)
          (ecase state
            (wait-read
@@ -72,11 +72,11 @@
 
 (defun try-read-sync-channel (chan)
   (with-slots (lock condvar state value) chan
-     (labels ((transfer (&aux (val value))
-                (setf value nil)
-                (setf state 'accept-read)
-                (condition-notify condvar)
-                val))
+     (labels ((transfer ()
+                (unwind-protect value
+                  (setf value nil)
+                  (setf state 'accept-read)
+                  (condition-notify condvar))))
        (with-lock-held (lock)
          (ecase state
            (wait-read
