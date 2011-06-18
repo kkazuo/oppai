@@ -16,7 +16,7 @@
 
 (defun do-parallel (&rest functions)
   (let ((thrs (loop for fun in (cdr functions)
-                    collect (make-thread fun)))
+                    collect (make-thread fun :name "do-parallel-thread")))
         (fun (car functions)))
     (prog1
       (when fun
