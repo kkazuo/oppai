@@ -24,8 +24,15 @@ POSSIBILITY OF SUCH DAMAGE.
 |#
 
 (defpackage :oppai
-  (:use :cl
-        :bordeaux-threads)
+  (:use :cl)
+  (:import-from :bordeaux-threads
+                :make-lock
+                :make-condition-variable
+                :with-lock-held
+                :condition-wait
+                :condition-notify
+                :make-thread
+                :join-thread)
   (:export #:make-sync-channel
            #:read-sync-channel
            #:try-read-sync-channel
