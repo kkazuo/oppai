@@ -1,5 +1,5 @@
 # License
-Apache/2.0
+The BSD 2-Clause License
 
 # Functions
 This is inter threads synchronization primitive, not for IPC.
